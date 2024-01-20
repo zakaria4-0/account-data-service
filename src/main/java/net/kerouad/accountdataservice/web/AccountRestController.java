@@ -13,6 +13,7 @@ import org.springframework.graphql.client.HttpGraphQlClient;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -54,13 +55,13 @@ public class AccountRestController {
         Customer[] customers = restTemplate.getForObject("http://localhost:8080/customers", Customer[].class);
         return List.of(customers);
     }
-
-    //Rest Client ->  version RestTemplate
     @GetMapping("/customer/{id}")
     public Customer customerById(@PathVariable Long id){
         Customer customer = restTemplate.getForObject("http://localhost:8080/customer/" + id, Customer.class);
         return customer;
     }
+
+    /***********************************************************/
 
     // Rest Client -> version WebClient
     @GetMapping ("/save/v2")
@@ -71,29 +72,6 @@ public class AccountRestController {
         Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
         webClient.post().uri("/save", customer);
     }
-    @GetMapping("/customer/v2/{id}")
-    public Mono<Customer> customerByIdV2(@PathVariable Long id){
-        WebClient webClient = WebClient.builder()
-                .baseUrl("http://localhost:8080")
-                .build();
-        Mono<Customer> customerMono = webClient.get()
-                .uri("/customer/{id}", id)
-                .retrieve().bodyToMono(Customer.class);
-        return customerMono;
-    }
-
-    //Rest Client ->  version OpenFeign
-    @GetMapping ("/save/v3")
-    public void saveCustomerV3() {
-        Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
-        customerRestClient.saveCustomer(customer);
-    }
-    @GetMapping("/customer/v3/{id}")
-    public Customer customerByIdV3(@PathVariable Long id){
-        return customerRestClient.getCustomerById(id);
-    }
-
-    //Rest Client -> programmative en utilisant WebClient
     @GetMapping("/customers/v2")
     public Flux<Customer> listCustomerV2(){
         WebClient webClient = WebClient.builder()
@@ -106,7 +84,29 @@ public class AccountRestController {
         return customerFlux;
     }
 
-    // Rest Client -> déclarative en utilisant OpenFeign
+    @GetMapping("/customer/v2/{id}")
+    public Mono<Customer> customerByIdV2(@PathVariable Long id){
+        WebClient webClient = WebClient.builder()
+                .baseUrl("http://localhost:8080")
+                .build();
+        Mono<Customer> customerMono = webClient.get()
+                .uri("/customer/{id}", id)
+                .retrieve().bodyToMono(Customer.class);
+        return customerMono;
+    }
+
+    /***********************************************************/
+
+    //Rest Client ->  version OpenFeign
+    @GetMapping ("/save/v3")
+    public void saveCustomerV3() {
+        Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
+        customerRestClient.saveCustomer(customer);
+    }
+    @GetMapping("/customer/v3/{id}")
+    public Customer customerByIdV3(@PathVariable Long id){
+        return customerRestClient.getCustomerById(id);
+    }
     @GetMapping("/customers/V3")
     public List<Customer> listCustomersV3(){
         return customerRestClient.getCustomers();
@@ -118,7 +118,7 @@ public class AccountRestController {
 
     @GetMapping("/gql/saveCustomer")
     public void saveCustomerGql(){
-        HttpGraphQlClient graphQlClient = HttpGraphQlClient.builder()
+        /*HttpGraphQlClient graphQlClient = HttpGraphQlClient.builder()
                 .url("http://localhost:8080/graphql")
                 .build();
         var httpRequestDocument= """
@@ -131,7 +131,17 @@ public class AccountRestController {
                     }
                   }
                 """;
-        graphQlClient.document(httpRequestDocument).execute();
+        We
+        graphQlClient.*/
+        WebClient webClient = WebClient.builder()
+                .baseUrl("http://localhost:8080")
+                .build();
+        Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
+        webClient.post().uri("/graphql");
+
+        HttpGraphQlClient graphQlClient = HttpGraphQlClient.builder(webClient)
+                .headers(headers -> headers.setBasicAuth(customer.toString()))
+                .build();
     }
 
     @GetMapping("/gql/customers")
@@ -175,6 +185,12 @@ public class AccountRestController {
 
     /** SOAP Client */
 
+    @GetMapping("/soap/saveCustomer")
+    public void saveCustomerSoap(){
+        Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
+        customerSoapService.save(customerMapper.fromCustomerToSoap(customer));
+    }
+
     @GetMapping("/soap/customers")
     public List<Customer> soapCustomers(){
         List<net.kerouad.customerdataservice.web.Customer> customerList = customerSoapService.findAll();
@@ -192,6 +208,13 @@ public class AccountRestController {
 
     /** GRPC Client */
 
+    @GetMapping("/grpc/saveCustomer")
+    public void saveCustomerGrpc(){
+        CustomerServiceOuterClass.SaveCustomerRequest request = CustomerServiceOuterClass.SaveCustomerRequest.newBuilder().build();
+
+        Customer customer = new Customer(null, "sanae", "sanae@gmail.com");
+        customerServiceBlockingStub.saveCustomer(customerMapper.fromCustomerToGrpc(customer));
+    }
     @GetMapping("/grpc/customers")
     public List<Customer> grpcCustomers(){
         CustomerServiceOuterClass.GetAllCustomersRequest request = CustomerServiceOuterClass.GetAllCustomersRequest.newBuilder().build();

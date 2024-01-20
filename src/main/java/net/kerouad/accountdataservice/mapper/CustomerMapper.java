@@ -3,6 +3,7 @@ package net.kerouad.accountdataservice.mapper;
 
 import net.kerouad.accountdataservice.model.Customer;
 import net.kerouad.customerdataservice.stub.CustomerServiceOuterClass;
+import net.kerouad.customerdataservice.web.CustomerRequest;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
@@ -14,5 +15,13 @@ public class CustomerMapper {
     }
     public Customer customerfromGrpcCustomer(CustomerServiceOuterClass.Customer grpcCustomer){
         return modelMapper.map(grpcCustomer, Customer.class);
+    }
+
+    public CustomerRequest fromCustomerToSoap(Customer customer) {
+        return modelMapper.map(customer, CustomerRequest.class);
+    }
+
+    public CustomerServiceOuterClass.SaveCustomerRequest fromCustomerToGrpc(Customer customer) {
+        return modelMapper.map(customer, CustomerServiceOuterClass.SaveCustomerRequest.Builder.class).build();
     }
 }
